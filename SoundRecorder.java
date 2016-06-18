@@ -22,7 +22,6 @@ import javax.swing.Timer;
 public class SoundRecorder extends javax.swing.JFrame {
 
     AudioRecorder myRecorder = new AudioRecorder();
-
     /**
      * Creates new form SoundRecorder
      */
