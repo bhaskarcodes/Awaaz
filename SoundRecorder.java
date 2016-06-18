@@ -7,13 +7,23 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect.Type;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineListener;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  *
@@ -22,6 +32,10 @@ import javax.swing.Timer;
 public class SoundRecorder extends javax.swing.JFrame {
 
     AudioRecorder myRecorder = new AudioRecorder();
+    Clip clip;
+    boolean wavplaying=false;
+    boolean started  = false;
+    String lastsavedfile = "";
     /**
      * Creates new form SoundRecorder
      */
@@ -51,6 +65,8 @@ public class SoundRecorder extends javax.swing.JFrame {
 
     public SoundRecorder() {
         initComponents();
+        File file=new File("record.wav");
+        file.delete();
         this.setIconImage(new ImageIcon(getClass().getResource("microphone.png")).getImage());
         this.setTitle("Awaaz");
         this.setLocationRelativeTo(null);
@@ -60,9 +76,15 @@ public class SoundRecorder extends javax.swing.JFrame {
         startbtn.setContentAreaFilled(false);
         startbtn.setOpaque(true);
         startbtn.setBackground(Color.cyan);
+        playbtn.setContentAreaFilled(false);
+        playbtn.setOpaque(true);
+        playbtn.setBackground(Color.cyan);
         stopbtn.setContentAreaFilled(false);
         stopbtn.setOpaque(true);
         stopbtn.setBackground(Color.cyan);
+        savebtn.setContentAreaFilled(false);
+        savebtn.setOpaque(true);
+        savebtn.setBackground(Color.cyan);
         this.setDefaultCloseOperation(this.EXIT_ON_CLOSE);
         addWindowListener(new AreYouSure());
 
@@ -80,6 +102,8 @@ public class SoundRecorder extends javax.swing.JFrame {
                 time.setText(clockTimeString);
             }
         });
+System.out.println("wavplaying = "+wavplaying);
+System.out.println("started = "+started);
     }
 
     /**
@@ -95,6 +119,8 @@ public class SoundRecorder extends javax.swing.JFrame {
         stopbtn = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
         time = new javax.swing.JLabel();
+        playbtn = new javax.swing.JButton();
+        savebtn = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -119,6 +145,22 @@ public class SoundRecorder extends javax.swing.JFrame {
 
         time.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
+        playbtn.setFont(new java.awt.Font("Leelawadee", 1, 18)); // NOI18N
+        playbtn.setText("PLAY");
+        playbtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                playbtnActionPerformed(evt);
+            }
+        });
+
+        savebtn.setFont(new java.awt.Font("Leelawadee", 1, 18)); // NOI18N
+        savebtn.setText("SAVE");
+        savebtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                savebtnActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -126,12 +168,14 @@ public class SoundRecorder extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(time, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addComponent(startbtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 251, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(stopbtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap(20, Short.MAX_VALUE))
+                    .addComponent(savebtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(playbtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(stopbtn, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(startbtn, javax.swing.GroupLayout.DEFAULT_SIZE, 255, Short.MAX_VALUE)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(time, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 251, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(19, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -139,12 +183,16 @@ public class SoundRecorder extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 223, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(time, javax.swing.GroupLayout.PREFERRED_SIZE, 31, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(time, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
-                .addComponent(startbtn, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(stopbtn, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addComponent(startbtn, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(stopbtn, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(13, 13, 13)
+                .addComponent(playbtn, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(savebtn, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(17, Short.MAX_VALUE))
         );
 
         pack();
@@ -152,23 +200,126 @@ public class SoundRecorder extends javax.swing.JFrame {
 
     private void startbtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startbtnActionPerformed
         myRecorder.record();
+        wavplaying = false;
+        started=true;
         startbtn.setBackground(Color.green);
         stopbtn.setBackground(Color.red);
         startbtn.setText("STARTED");
         stopbtn.setText("STOP RECORDING");
         myTimer1.start();
         startbtn.setEnabled(false);
+        playbtn.setEnabled(false);
+        System.out.println("wavplaying = "+wavplaying);
+System.out.println("started = "+started);
         // TODO add your handling code here:
     }//GEN-LAST:event_startbtnActionPerformed
 
     private void stopbtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopbtnActionPerformed
+System.out.println("wavplaying = "+wavplaying);
+System.out.println("started = "+started);
+startbtn.setEnabled(true);
+stopbtn.setEnabled(true);
+        if(wavplaying==true){
+            clip.stop();
+            wavplaying=false;
+            myTimer1.stop();
+            
+        clockTick = 0;
+        clockTime = ((double) clockTick) / 10.0;
+        clockTimeString = new Double(clockTime).toString();
+        time.setText(clockTimeString);
+        playbtn.setEnabled(true);
+        playbtn.setText("PLAY");
+        }else if(started){
+         started=false;
         myRecorder.stop();
-        FileDialog fd = new FileDialog(this, "Save As", FileDialog.SAVE);
+        playbtn.setEnabled(true);
+        startbtn.setBackground(Color.cyan);
+        stopbtn.setBackground(Color.cyan);
+        startbtn.setText("START");
+        stopbtn.setText("STOP");
+        myTimer1.stop();
+        clockTick = 0;
+        clockTime = ((double) clockTick) / 10.0;
+        clockTimeString = new Double(clockTime).toString();
+        time.setText(clockTimeString);
+        startbtn.setEnabled(true);
+     }
+    }//GEN-LAST:event_stopbtnActionPerformed
+
+    private void playbtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_playbtnActionPerformed
+       System.out.println("wavplaying = "+wavplaying);
+System.out.println("started = "+started);
+        try{
+      /* JFileChooser fileChooser = new JFileChooser();
+        
+        int ret = fileChooser.showOpenDialog(null);
+     
+        if(!fileChooser.getSelectedFile().exists())
+            JOptionPane.showMessageDialog(this, "File does not exist!!");
+        if (ret == JFileChooser.APPROVE_OPTION && fileChooser.getSelectedFile().exists()) { //file selected
+            wavplaying=true;
+            
+       */     
+      String path="";
+        if(lastsavedfile.equals(""))
+            path="record.wav";//fileChooser.getSelectedFile();
+        else
+          path=lastsavedfile;
+        
+            File file = new File(path);    
+            if(!file.exists())
+                playbtn.setText("PLAYING");
+                playbtn.setEnabled(false);
+                startbtn.setEnabled(false);
+                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(file);
+                clip = AudioSystem.getClip();
+                clip.open(audioInputStream);
+                clip.start();
+                myTimer1.start();
+                
+                clip.addLineListener(new LineListener() {
+        public void update(LineEvent event) {
+				if (event.getType() == LineEvent.Type.STOP) {
+			             playbtn.setEnabled(true);
+                                    startbtn.setEnabled(true);
+                                startbtn.setBackground(Color.cyan);
+        stopbtn.setBackground(Color.cyan);
+        startbtn.setText("START");
+        stopbtn.setText("STOP");
+        myTimer1.stop();
+        clockTick = 0;
+        clockTime = ((double) clockTick) / 10.0;
+        clockTimeString = new Double(clockTime).toString();
+        time.setText(clockTimeString);
+        playbtn.setText("PLAY");
+                                }
+        }
+    });
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error while playing sounds");
+                startbtn.setEnabled(true);
+stopbtn.setEnabled(true);
+playbtn.setEnabled(true);
+playbtn.setText("PLAY");
+            }
+        
+
+        // TODO add your handling code here:
+    }//GEN-LAST:event_playbtnActionPerformed
+
+    private void savebtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_savebtnActionPerformed
+       System.out.println("wavplaying = "+wavplaying);
+System.out.println("started = "+started);
+
+        if(new File("record.wav").exists()){FileDialog fd = new FileDialog(this, "Save As", FileDialog.SAVE);
         fd.setVisible(true);
+
         if (fd.getFile() != null) {
             String fn = fd.getFile();
             String dir = fd.getDirectory();
             String filename = dir + fn + ".wav";
+            lastsavedfile=filename;
             try {
                 System.out.println(filename);
                 myRecorder.stop(filename);
@@ -177,21 +328,10 @@ public class SoundRecorder extends javax.swing.JFrame {
             } catch (UnsupportedAudioFileException ex) {
                 Logger.getLogger(SoundRecorder.class.getName()).log(Level.SEVERE, null, ex);
             }
-            startbtn.setBackground(Color.cyan);
-            stopbtn.setBackground(Color.cyan);
-            startbtn.setText("START");
-            stopbtn.setText("STOP");
-            myTimer1.stop();
-            clockTick = 0;
-            clockTime = ((double) clockTick) / 10.0;
-            clockTimeString = new Double(clockTime).toString();
-            time.setText(clockTimeString);
-            startbtn.setEnabled(true);
             JOptionPane.showMessageDialog(this, "Recording stored.");
         }
-
-
-    }//GEN-LAST:event_stopbtnActionPerformed
+        }
+    }//GEN-LAST:event_savebtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -230,6 +370,8 @@ public class SoundRecorder extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JButton playbtn;
+    private javax.swing.JButton savebtn;
     private javax.swing.JButton startbtn;
     private javax.swing.JButton stopbtn;
     private javax.swing.JLabel time;

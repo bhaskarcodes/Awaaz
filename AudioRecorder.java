@@ -26,8 +26,10 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 public class AudioRecorder {
     TargetDataLine targetline;
     File audioFile = new File("record.wav");
+    
     ArrayList<Thread> threadList = new ArrayList<Thread>();
     public void record() {
+        
         System.out.println("started");
         try {
             AudioFormat format = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 2, 4, 44100, false); // for wav file
@@ -54,11 +56,11 @@ public class AudioRecorder {
         } catch (Exception e) {
         }
     }
+
     public void stop(){
         targetline.stop();
         targetline.close();
     }
-
     public void stop(String filename) throws IOException, UnsupportedAudioFileException {
         final File myFile = new File(filename);
         Path FROM = Paths.get(audioFile.getPath());
