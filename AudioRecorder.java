@@ -54,11 +54,13 @@ public class AudioRecorder {
         } catch (Exception e) {
         }
     }
+    public void stop(){
+        targetline.stop();
+        targetline.close();
+    }
 
     public void stop(String filename) throws IOException, UnsupportedAudioFileException {
         final File myFile = new File(filename);
-        targetline.stop();
-        targetline.close();
         Path FROM = Paths.get(audioFile.getPath());
         Path TO = Paths.get(myFile.getPath());
         Files.copy(FROM, TO, StandardCopyOption.REPLACE_EXISTING);
