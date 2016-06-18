@@ -163,6 +163,7 @@ public class SoundRecorder extends javax.swing.JFrame {
     }//GEN-LAST:event_startbtnActionPerformed
 
     private void stopbtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopbtnActionPerformed
+        myRecorder.stop();
         FileDialog fd = new FileDialog(this, "Save As", FileDialog.SAVE);
         fd.setVisible(true);
         if (fd.getFile() != null) {
